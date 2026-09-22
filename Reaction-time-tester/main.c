@@ -19,10 +19,17 @@ static void uart_init(void)
 
 }
 
-static void uart_putc(const char *s)
+static void uart_putc(char c)
+{
+        while(!(UCSR0A & (1 << UDRE0 )));
+        UDR0 = c;
+}
+
+static void uart_puts(const char *s)
 {
     while (*s) uart_putc(*s++);
 }
+
 
 static void uart_putu16(uint16_t val)
 {
@@ -32,33 +39,38 @@ static void uart_putu16(uint16_t val)
 }
 
 
-//timing
 
 volatile uint16_t ms_counter = 0;
 volatile uint8_t button_flag = 0;
 
 
-ISR(TIMER_COMP_vect){
+ISR(TIMER1_COMPA_vect){
     ms_counter++;
 };
-
+/*
 ISR(INT0_vect){
     button_flag = 1;
-};
+};*/
+ISR(PCINT0_vect){
+     if( ! ( PINB & ( 1<< PB0)) ){
+        button_flag = 1 ;
+    }
+}
 
 static void timer1_init(void)
 {
     TCCR1A = 0;
-    TCCR1B = (1<<WGM12) | ( 1 << CS11 ) | ( 1 << CS10) ;
+    TCCR1B = ( 1 << WGM12 ) | ( 1 << CS11 ) | ( 1 << CS10) ;
     OCR1A = 249 ;
     TIMSK1 = ( 1 << OCIE1A );
 }
+
 
 static uint16_t get_ms(void)
 {
     uint16_t val;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE){
-        val = ms_counter++;
+        val = ms_counter;
     }
     return val;
 }
@@ -70,7 +82,7 @@ static uint16_t random_delay(void)
 {
     uint8_t lsb = lfsr & 1 ;
     lfsr >>= 1 ;
-    if (lsb) lfsr ^= 0xB400;
+    if (lsb)    lfsr ^= 0xB400;
     return 1000 + (lfsr % 4001);
 }
 
@@ -81,11 +93,16 @@ int main(void)
     DDRB |= ( 1 << PB5 );
     PORTB &= ~( 1 << PB5 );
 
-    DDRD &= ~( 1 << PD2 );
-    PORTD |= ( 1 << PD2 );
 
-    EICRA = ( 1 << ISC01);
-    EIMSK = ( 1 << INIT0);
+    //DDRD &= ~( 1 << PD2 );
+    //PORTD |= ( 1 << PD2 );
+    DDRB &= ~( 1 << PB0 );
+    PORTB |= ( 1 << PB0 );
+    //EICRA = ( 1 << ISC01);
+    //EIMSK = ( 1 << INT0);
+    PCICR |= ( 1 << PCIE0 );
+    PCMSK0 |=  ( 1 << PCINT0 );
+
 
     uart_init();
     timer1_init();
@@ -97,8 +114,8 @@ int main(void)
 
     while(1){
         button_flag = 0;
-        PORTB &= ~( 1 <<‌ PB5 );
-    }
+        PORTB &= ~(1 << PB5);
+
 
     uart_puts("Get ready...\r\n");
 
@@ -126,8 +143,8 @@ int main(void)
     button_flag = 0 ;
     uint16_t led_on_time = get_ms();
 
-    while(!button_falg){
-        if((get_ms() - led_on_time) >‌ 3000)break;
+    while(!button_flag){
+        if((get_ms() - led_on_time) > 3000 ) break;
     }
 
     PORTB &= ~(1 << PB5);
@@ -143,5 +160,11 @@ int main(void)
 
     _delay_ms(2000);
 
-
+    };
 }
+
+
+
+
+
+
