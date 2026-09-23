@@ -87,6 +87,12 @@ static uint16_t random_delay(void)
 }
 
 
+static uint16_t best=3000;
+static void showbestrecord(void);
+static void recheckbest(uint16_t newrecord);
+
+
+
 
 int main(void)
 {
@@ -116,7 +122,7 @@ int main(void)
         button_flag = 0;
         PORTB &= ~(1 << PB5);
 
-
+    showbestrecord();
     uart_puts("Get ready...\r\n");
 
     //random wait
@@ -151,8 +157,9 @@ int main(void)
 
     if(button_flag){
         uint16_t reaction = get_ms() - led_on_time ;
-        uart_puts("Reaction time: ");
-        uart_putu16(reaction);
+        recheckbest(reaction);
+        uart_puts("Reaction time: ") ;
+        uart_putu16(reaction) ;
         uart_puts(" ms\r\n\r\n");
     }else{
         uart_puts("Too slow! (over 3 seconds)\r\n\r\n");
@@ -164,7 +171,19 @@ int main(void)
 }
 
 
+static void showbestrecord(void){
+    uart_puts("\r\n Best record ");
+    uart_putu16(best);
+    uart_puts("ms\r\n\r\n");
+};
 
 
+static void recheckbest(uint16_t newrecord){
+    if( best>newrecord  ){
+        best=newrecord;
+    }else{
+        uart_puts("not enough speed\r\n");
+    }
+};
 
 
